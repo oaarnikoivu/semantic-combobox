@@ -17,7 +17,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { cos_sim, DataArray, pipeline } from "@huggingface/transformers";
+import {
+  WorkerMessage,
+  WorkerinitializeEmbeddingsMessage,
+  WorkerComputeSimilarityMessage,
+  SimilarityResult,
+} from "@/types";
 
 const sentences = [
   "The quick brown fox jumps over the lazy dog",
@@ -43,54 +48,85 @@ const sentences = [
   "The best revenge is massive success",
 ];
 
-const model = await pipeline("feature-extraction", "Xenova/bert-base-uncased", {
-  device: "wasm",
-  dtype: "q8",
-  revision: "default",
-});
+function sendinitializeEmbeddingsMessage(
+  worker: Worker,
+  sentences: string[]
+): void {
+  const message: WorkerinitializeEmbeddingsMessage = {
+    type: "initializeEmbeddings",
+    data: { sentences },
+  };
+  worker.postMessage(message);
+}
 
-let precomputedEmbeddings: DataArray[] = [];
-(async () => {
-  for (const sentence of sentences) {
-    const embedding = await model(sentence, {
-      pooling: "mean",
-      normalize: true,
-    });
-    precomputedEmbeddings.push(embedding.data);
-  }
-})();
+function sendComputeSimilarityMessage(worker: Worker, query: string): void {
+  const message: WorkerComputeSimilarityMessage = {
+    type: "computeSimilarity",
+    data: { query },
+  };
+  worker.postMessage(message);
+}
 
-export function ComboboxDemo() {
+export function SemanticCombobox() {
   const [open, setOpen] = React.useState(false);
   const [value, setValue] = React.useState("");
   const [input, setInput] = React.useState("");
-  const [sentenceEmbeddings, setSentenceEmbeddings] = React.useState<
-    DataArray[]
-  >([]);
+  const [loading, setLoading] = React.useState(true);
   const [results, setResults] = React.useState(sentences);
 
+  const workerRef = React.useRef<Worker | null>(null);
   const debounceTimeout = React.useRef<NodeJS.Timeout | null>(null);
-
   const similarityCache = React.useRef<Record<string, string[]>>({});
 
   React.useEffect(() => {
-    if (precomputedEmbeddings.length === sentences.length) {
-      setSentenceEmbeddings(precomputedEmbeddings);
-    } else {
-      const initializeEmbeddings = async () => {
-        const embeddings: DataArray[] = [];
-        for (const sentence of sentences) {
-          const embedding = await model(sentence, {
-            pooling: "mean",
-            normalize: true,
-          });
-          embeddings.push(embedding.data);
+    workerRef.current = new Worker(new URL("../worker.ts", import.meta.url), {
+      type: "module",
+    });
+
+    workerRef.current.onmessage = (event: MessageEvent<WorkerMessage>) => {
+      const message = event.data;
+      const type = message.type;
+
+      if (type === "modelLoaded") {
+        if (workerRef.current) {
+          sendinitializeEmbeddingsMessage(workerRef.current, sentences);
         }
-        setSentenceEmbeddings(embeddings);
-        precomputedEmbeddings = embeddings;
-      };
-      initializeEmbeddings();
-    }
+      } else if (type === "initialEmbeddingsComputed") {
+        setLoading(false);
+      } else if (type === "similarityResults") {
+        if ("data" in message && message.data && "results" in message.data) {
+          const { results: similarityResults } = message.data;
+          const resultSentences = similarityResults.map(
+            (r: SimilarityResult) => sentences[r.index]
+          );
+
+          if (input) {
+            similarityCache.current[input] = resultSentences;
+          }
+
+          setResults(resultSentences);
+        }
+      } else if (type === "error") {
+        if (
+          "data" in message &&
+          message.data &&
+          "message" in message.data &&
+          "error" in message.data
+        ) {
+          console.error(
+            "Worker error:",
+            message.data.message,
+            message.data.error
+          );
+          setLoading(false);
+        }
+      }
+    };
+
+    return () => {
+      workerRef.current?.terminate();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleValueChange = (value: string) => {
@@ -116,37 +152,22 @@ export function ComboboxDemo() {
       return;
     }
 
-    const queryEmbedding = await model(query, {
-      pooling: "mean",
-      normalize: true,
-    });
-
-    const queryVector = queryEmbedding.data;
-
-    const similarities = sentenceEmbeddings.map((sentenceEmbedding, index) => {
-      const similarity = cos_sim(
-        queryVector as number[],
-        sentenceEmbedding as number[]
-      );
-      return {
-        sentence: sentences[index],
-        similarity,
-      };
-    });
-
-    const sortedSimilarities = similarities.sort(
-      (a, b) => b.similarity - a.similarity
-    );
-
-    const topResults = sortedSimilarities.slice(0, 5);
-    const resultSentences = topResults.map((s) => s.sentence);
-
-    similarityCache.current[query] = resultSentences;
-    setResults(resultSentences);
+    if (workerRef.current) {
+      sendComputeSimilarityMessage(workerRef.current, query);
+    }
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(open) => {
+        setOpen(open);
+        if (!open) {
+          setResults(sentences);
+          setInput("");
+        }
+      }}
+    >
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -154,7 +175,11 @@ export function ComboboxDemo() {
           aria-expanded={open}
           className="w-[400px] justify-between"
         >
-          {value ? sentences.find((s) => s === value) : "Select sentence..."}
+          {loading
+            ? "Loading..."
+            : value
+            ? sentences.find((s) => s === value)
+            : "Select sentence..."}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -174,6 +199,8 @@ export function ComboboxDemo() {
                   value={s}
                   onSelect={(currentValue) => {
                     setValue(currentValue === value ? "" : currentValue);
+                    setInput("");
+                    setResults(sentences);
                     setOpen(false);
                   }}
                 >
