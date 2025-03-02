@@ -50,6 +50,20 @@ function sendError(errorMessage: string, error: unknown): void {
   self.postMessage(message);
 }
 
+async function initializeEmbeddings(sentences: string[]): Promise<DataArray[]> {
+  const embeddings: DataArray[] = [];
+
+  for (const sentence of sentences) {
+    const embedding = await model(sentence, {
+      pooling: "mean",
+      normalize: true,
+    });
+    embeddings.push(embedding.data);
+  }
+
+  return embeddings;
+}
+
 async function initModel() {
   try {
     model = await pipeline("feature-extraction", "Xenova/bert-base-uncased", {
@@ -64,6 +78,29 @@ async function initModel() {
   }
 }
 
+async function computeSimilarity(
+  query: string,
+  sentenceEmbeddings: DataArray[]
+): Promise<SimilarityResult[]> {
+  const queryEmbedding = await model(query, {
+    pooling: "mean",
+    normalize: true,
+  });
+  const queryVector = queryEmbedding.data;
+
+  const similarities: SimilarityResult[] = sentenceEmbeddings.map(
+    (sentenceEmbedding, index) => {
+      const similarity = cos_sim(
+        queryVector as number[],
+        sentenceEmbedding as number[]
+      );
+      return { index, similarity };
+    }
+  );
+
+  return similarities;
+}
+
 self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
   try {
     const message = event.data;
@@ -74,41 +111,13 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
     } else if (type === "initializeEmbeddings") {
       if ("data" in message && message.data && "sentences" in message.data) {
         const { sentences } = message.data;
-        const embeddings: DataArray[] = [];
-
-        for (const sentence of sentences) {
-          const embedding = await model(sentence, {
-            pooling: "mean",
-            normalize: true,
-          });
-          embeddings.push(embedding.data);
-        }
-
-        sentenceEmbeddings = embeddings;
-        sendinitialEmbeddingsComputed(embeddings);
+        sentenceEmbeddings = await initializeEmbeddings(sentences);
+        sendinitialEmbeddingsComputed(sentenceEmbeddings);
       }
     } else if (type === "computeSimilarity") {
       if ("data" in message && message.data && "query" in message.data) {
         const { query } = message.data;
-        const queryEmbedding = await model(query, {
-          pooling: "mean",
-          normalize: true,
-        });
-
-        const queryVector = queryEmbedding.data;
-
-        const similarities: SimilarityResult[] = sentenceEmbeddings.map(
-          (sentenceEmbedding, index) => {
-            const similarity = cos_sim(
-              queryVector as number[],
-              sentenceEmbedding as number[]
-            );
-            return {
-              index,
-              similarity,
-            };
-          }
-        );
+        const similarities = await computeSimilarity(query, sentenceEmbeddings);
 
         const topResults = similarities
           .filter((item) => item.similarity >= 0.7)
