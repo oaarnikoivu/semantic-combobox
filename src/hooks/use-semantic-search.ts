@@ -71,7 +71,7 @@ export default function useSemanticSearch() {
       } else if (type === "initialEmbeddingsComputed") {
         setLoading(false);
       } else if (type === "similarityResults") {
-        if ("data" in message && message.data && "results" in message.data) {
+        if (message.data?.results) {
           const { results: similarityResults } = message.data;
           const resultSentences = similarityResults.map(
             (r: SimilarityResult) => SENTENCES[r.index]

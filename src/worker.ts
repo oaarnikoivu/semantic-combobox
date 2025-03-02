@@ -112,13 +112,13 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
     if (type === "init") {
       await initModel();
     } else if (type === "initializeEmbeddings") {
-      if ("data" in message && message.data && "sentences" in message.data) {
+      if (message.data?.sentences) {
         const { sentences } = message.data;
         sentenceEmbeddings = await initializeEmbeddings(sentences);
         sendinitialEmbeddingsComputed(sentenceEmbeddings);
       }
     } else if (type === "computeSimilarity") {
-      if ("data" in message && message.data && "query" in message.data) {
+      if (message.data?.query) {
         const { query } = message.data;
         const similarities = await computeSimilarity(query, sentenceEmbeddings);
 
