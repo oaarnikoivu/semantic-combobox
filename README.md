@@ -2,6 +2,8 @@
 
 Using embeddings from a pre-trained language model to provide semantic search capabilities in a combobox interface, directly in the browser.
 
+[Demo](https://codesandbox.io/p/devbox/github/oaarnikoivu/semantic-combobox)
+
 ## Made with
 
 - [shadcn/ui Combobox](https://ui.shadcn.com/docs/components/combobox)
