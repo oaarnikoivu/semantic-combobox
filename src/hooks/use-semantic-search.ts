@@ -81,7 +81,7 @@ export default function useSemanticSearch() {
               (r: SimilarityResult) => SENTENCES[r.index]
             );
 
-            if ("query" in message.data && message.data.query) {
+            if (message.data?.query) {
               addToCache(message.data.query, resultSentences);
             }
 
