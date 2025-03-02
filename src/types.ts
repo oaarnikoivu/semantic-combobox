@@ -1,11 +1,12 @@
-export type WorkerMessageType =
-  | "init"
-  | "modelLoaded"
-  | "initializeEmbeddings"
-  | "initialEmbeddingsComputed"
-  | "computeSimilarity"
-  | "similarityResults"
-  | "error";
+export enum WorkerMessageType {
+  Init = "init",
+  ModelLoaded = "modelLoaded",
+  InitializeEmbeddings = "initializeEmbeddings",
+  InitialEmbeddingsComputed = "initialEmbeddingsComputed",
+  ComputeSimilarity = "computeSimilarity",
+  SimilarityResults = "similarityResults",
+  Error = "error",
+}
 
 export interface SimilarityResult {
   index: number;
@@ -13,34 +14,34 @@ export interface SimilarityResult {
 }
 
 export interface WorkerInitMessage {
-  type: "init";
+  type: WorkerMessageType.Init;
 }
 
 export interface WorkerModelLoadedMessage {
-  type: "modelLoaded";
+  type: WorkerMessageType.ModelLoaded;
 }
 
 export interface WorkerinitializeEmbeddingsMessage {
-  type: "initializeEmbeddings";
+  type: WorkerMessageType.InitializeEmbeddings;
   data: {
     sentences: string[];
   };
 }
 
 export interface WorkerinitialEmbeddingsComputedMessage {
-  type: "initialEmbeddingsComputed";
+  type: WorkerMessageType.InitialEmbeddingsComputed;
   data: unknown;
 }
 
 export interface WorkerComputeSimilarityMessage {
-  type: "computeSimilarity";
+  type: WorkerMessageType.ComputeSimilarity;
   data: {
     query: string;
   };
 }
 
 export interface WorkerSimilarityResultsMessage {
-  type: "similarityResults";
+  type: WorkerMessageType.SimilarityResults;
   data: {
     results: SimilarityResult[];
     query: string;
@@ -48,7 +49,7 @@ export interface WorkerSimilarityResultsMessage {
 }
 
 export interface WorkerErrorMessage {
-  type: "error";
+  type: WorkerMessageType.Error;
   data: {
     message: string;
     error: string;

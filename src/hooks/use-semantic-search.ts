@@ -4,6 +4,7 @@ import {
   WorkerComputeSimilarityMessage,
   WorkerinitializeEmbeddingsMessage,
   WorkerMessage,
+  WorkerMessageType,
 } from "@/types";
 import { useEffect, useRef, useState } from "react";
 
@@ -12,7 +13,7 @@ function sendinitializeEmbeddingsMessage(
   sentences: string[]
 ): void {
   const message: WorkerinitializeEmbeddingsMessage = {
-    type: "initializeEmbeddings",
+    type: WorkerMessageType.InitializeEmbeddings,
     data: { sentences },
   };
   worker.postMessage(message);
@@ -20,7 +21,7 @@ function sendinitializeEmbeddingsMessage(
 
 function sendComputeSimilarityMessage(worker: Worker, query: string): void {
   const message: WorkerComputeSimilarityMessage = {
-    type: "computeSimilarity",
+    type: WorkerMessageType.ComputeSimilarity,
     data: { query },
   };
   worker.postMessage(message);
@@ -64,37 +65,35 @@ export default function useSemanticSearch() {
       const message = event.data;
       const type = message.type;
 
-      if (type === "modelLoaded") {
-        if (workerRef.current) {
-          sendinitializeEmbeddingsMessage(workerRef.current, SENTENCES);
-        }
-      } else if (type === "initialEmbeddingsComputed") {
-        setLoading(false);
-      } else if (type === "similarityResults") {
-        if (message.data?.results) {
-          const { results: similarityResults } = message.data;
-          const resultSentences = similarityResults.map(
-            (r: SimilarityResult) => SENTENCES[r.index]
-          );
-
-          if ("query" in message.data && message.data.query) {
-            addToCache(message.data.query, resultSentences);
+      switch (type) {
+        case WorkerMessageType.ModelLoaded:
+          if (workerRef.current) {
+            sendinitializeEmbeddingsMessage(workerRef.current, SENTENCES);
           }
-
-          setResults(resultSentences);
-        }
-      } else if (type === "error") {
-        if (
-          "data" in message &&
-          message.data &&
-          "message" in message.data &&
-          "error" in message.data
-        ) {
-          const errorMessage = `${message.data.message}: ${message.data.error}`;
-          console.error("Worker error:", errorMessage);
-          setError(errorMessage);
+          break;
+        case WorkerMessageType.InitialEmbeddingsComputed:
           setLoading(false);
-        }
+          break;
+        case WorkerMessageType.SimilarityResults:
+          if (message.data?.results) {
+            const { results: similarityResults } = message.data;
+            const resultSentences = similarityResults.map(
+              (r: SimilarityResult) => SENTENCES[r.index]
+            );
+
+            if ("query" in message.data && message.data.query) {
+              addToCache(message.data.query, resultSentences);
+            }
+
+            setResults(resultSentences);
+          }
+          break;
+        case WorkerMessageType.Error:
+          setError(`${message.data.message}: ${message.data.error}`);
+          setLoading(false);
+          break;
+        default:
+          throw new Error(`Unknown message type: ${type}`);
       }
     };
 
