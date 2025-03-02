@@ -51,21 +51,16 @@ export function SemanticCombobox() {
 
   const workerRef = useRef<Worker | null>(null);
   const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
-  const cacheKeys = useRef<string[]>([]);
   const similarityCache = useRef<Record<string, string[]>>({});
 
   const addToCache = (query: string, results: string[]) => {
-    if (query in similarityCache.current) {
-      cacheKeys.current = cacheKeys.current.filter((k) => k !== query);
-    } else if (cacheKeys.current.length >= MAX_CACHE_SIZE) {
-      const oldestKey = cacheKeys.current.shift();
-      if (oldestKey) {
-        delete similarityCache.current[oldestKey];
-      }
+    if (
+      !(query in similarityCache.current) &&
+      Object.keys(similarityCache.current).length >= MAX_CACHE_SIZE
+    ) {
+      similarityCache.current = {};
     }
-
     similarityCache.current[query] = results;
-    cacheKeys.current.push(query);
   };
 
   useEffect(() => {
