@@ -21,5 +21,6 @@ Using embeddings from a pre-trained language model to provide semantic search ca
 
 - `src/components/semantic-combobox.tsx`: Main component with UI logic
 - `src/worker.ts`: Web Worker for handling similarity search
+- `src/hooks/use-semantic-search.ts`: Hook for handling semantic search
 - `src/types.ts`: Shared type definitions
 - `src/constants.ts`: Constants
