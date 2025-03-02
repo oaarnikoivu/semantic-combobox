@@ -98,10 +98,10 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
         const queryVector = queryEmbedding.data;
 
         const similarities: SimilarityResult[] = sentenceEmbeddings.map(
-          (SimilarityResult, index) => {
+          (sentenceEmbedding, index) => {
             const similarity = cos_sim(
               queryVector as number[],
-              SimilarityResult as number[]
+              sentenceEmbedding as number[]
             );
             return {
               index,
