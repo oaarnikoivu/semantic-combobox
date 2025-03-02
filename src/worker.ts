@@ -1,5 +1,4 @@
 import {
-  DataArray,
   FeatureExtractionPipeline,
   pipeline,
   cos_sim,
@@ -7,13 +6,13 @@ import {
 import { SimilarityResult, WorkerMessageType, WorkerMessage } from "./types";
 
 let model: FeatureExtractionPipeline;
-let sentenceEmbeddings: DataArray[];
+let sentenceEmbeddings: number[][];
 
 function sendModelLoaded(): void {
   self.postMessage({ type: WorkerMessageType.ModelLoaded });
 }
 
-function sendinitialEmbeddingsComputed(embeddings: DataArray[]): void {
+function sendinitialEmbeddingsComputed(embeddings: number[][]): void {
   self.postMessage({
     type: WorkerMessageType.InitialEmbeddingsComputed,
     data: embeddings,
@@ -40,18 +39,12 @@ function sendError(errorMessage: string, error: unknown): void {
   });
 }
 
-async function initializeEmbeddings(sentences: string[]): Promise<DataArray[]> {
-  const embeddings: DataArray[] = [];
-
-  for (const sentence of sentences) {
-    const embedding = await model(sentence, {
-      pooling: "mean",
-      normalize: true,
-    });
-    embeddings.push(embedding.data);
-  }
-
-  return embeddings;
+async function initializeEmbeddings(sentences: string[]): Promise<number[][]> {
+  const embeddings = await model(sentences, {
+    pooling: "mean",
+    normalize: true,
+  });
+  return embeddings.tolist();
 }
 
 async function initModel() {
@@ -70,20 +63,17 @@ async function initModel() {
 
 async function computeSimilarity(
   query: string,
-  sentenceEmbeddings: DataArray[]
+  sentenceEmbeddings: number[][]
 ): Promise<SimilarityResult[]> {
   const queryEmbedding = await model(query, {
     pooling: "mean",
     normalize: true,
   });
-  const queryVector = queryEmbedding.data;
+  const queryVector: number[] = queryEmbedding.tolist()[0];
 
   const similarities: SimilarityResult[] = sentenceEmbeddings.map(
     (sentenceEmbedding, index) => {
-      const similarity = cos_sim(
-        queryVector as number[],
-        sentenceEmbedding as number[]
-      );
+      const similarity = cos_sim(queryVector, sentenceEmbedding);
       return { index, similarity };
     }
   );
