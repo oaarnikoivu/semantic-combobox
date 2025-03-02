@@ -43,6 +43,7 @@ export interface WorkerSimilarityResultsMessage {
   type: "similarityResults";
   data: {
     results: SimilarityResult[];
+    query: string;
   };
 }
 

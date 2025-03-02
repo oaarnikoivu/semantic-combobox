@@ -1,0 +1,25 @@
+export const MAX_CACHE_SIZE = 50;
+
+export const SENTENCES = [
+  "The quick brown fox jumps over the lazy dog",
+  "A fast, dark-colored fox leaps over a sleep canine",
+  "A journey of a thousand miles begins with a single step",
+  "To be or not to be, that is the question",
+  "All that glitters is not gold",
+  "The early bird catches the worm",
+  "Life is what happens when you're busy making other plans",
+  "In the middle of difficulty lies opportunity",
+  "Knowledge is power, but enthusiasm pulls the switch",
+  "The only way to do great work is to love what you do",
+  "Happiness is not something ready-made, it comes from your own actions",
+  "The best time to plant a tree was 20 years ago, the second best time is now",
+  "Success is not final, failure is not fatal: it is the courage to continue that counts",
+  "You miss 100% of the shots you don't take",
+  "It does not matter how slowly you go as long as you do not stop",
+  "The future belongs to those who believe in the beauty of their dreams",
+  "Believe you can and you're halfway there",
+  "The purpose of our lives is to be happy",
+  "Don't count the days, make the days count",
+  "The only impossible journey is the one you never begin",
+  "The best revenge is massive success",
+];

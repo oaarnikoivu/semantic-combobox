@@ -31,10 +31,13 @@ function sendinitialEmbeddingsComputed(embeddings: DataArray[]): void {
   self.postMessage(message);
 }
 
-function sendSimilarityResults(results: SimilarityResult[]): void {
+function sendSimilarityResults(
+  results: SimilarityResult[],
+  query: string
+): void {
   const message: WorkerSimilarityResultsMessage = {
     type: "similarityResults",
-    data: { results },
+    data: { results, query },
   };
   self.postMessage(message);
 }
@@ -123,7 +126,7 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
           .filter((item) => item.similarity >= 0.7)
           .sort((a, b) => b.similarity - a.similarity);
 
-        sendSimilarityResults(topResults);
+        sendSimilarityResults(topResults, query);
       }
     }
   } catch (error) {

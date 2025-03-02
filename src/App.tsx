@@ -1,4 +1,3 @@
-import "./App.css";
 import { SemanticCombobox } from "./components/semantic-combobox";
 
 function App() {

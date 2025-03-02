@@ -1,4 +1,3 @@
-import * as React from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -21,30 +20,8 @@ import {
   WorkerComputeSimilarityMessage,
   SimilarityResult,
 } from "@/types";
-
-const sentences = [
-  "The quick brown fox jumps over the lazy dog",
-  "A fast, dark-colored fox leaps over a sleep canine",
-  "A journey of a thousand miles begins with a single step",
-  "To be or not to be, that is the question",
-  "All that glitters is not gold",
-  "The early bird catches the worm",
-  "Life is what happens when you're busy making other plans",
-  "In the middle of difficulty lies opportunity",
-  "Knowledge is power, but enthusiasm pulls the switch",
-  "The only way to do great work is to love what you do",
-  "Happiness is not something ready-made, it comes from your own actions",
-  "The best time to plant a tree was 20 years ago, the second best time is now",
-  "Success is not final, failure is not fatal: it is the courage to continue that counts",
-  "You miss 100% of the shots you don't take",
-  "It does not matter how slowly you go as long as you do not stop",
-  "The future belongs to those who believe in the beauty of their dreams",
-  "Believe you can and you're halfway there",
-  "The purpose of our lives is to be happy",
-  "Don't count the days, make the days count",
-  "The only impossible journey is the one you never begin",
-  "The best revenge is massive success",
-];
+import { useEffect, useRef, useState } from "react";
+import { MAX_CACHE_SIZE, SENTENCES } from "@/constants";
 
 function sendinitializeEmbeddingsMessage(
   worker: Worker,
@@ -66,17 +43,32 @@ function sendComputeSimilarityMessage(worker: Worker, query: string): void {
 }
 
 export function SemanticCombobox() {
-  const [open, setOpen] = React.useState(false);
-  const [value, setValue] = React.useState("");
-  const [input, setInput] = React.useState("");
-  const [loading, setLoading] = React.useState(true);
-  const [results, setResults] = React.useState(sentences);
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState("");
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [results, setResults] = useState(SENTENCES);
 
-  const workerRef = React.useRef<Worker | null>(null);
-  const debounceTimeout = React.useRef<NodeJS.Timeout | null>(null);
-  const similarityCache = React.useRef<Record<string, string[]>>({});
+  const workerRef = useRef<Worker | null>(null);
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
+  const cacheKeys = useRef<string[]>([]);
+  const similarityCache = useRef<Record<string, string[]>>({});
 
-  React.useEffect(() => {
+  const addToCache = (query: string, results: string[]) => {
+    if (query in similarityCache.current) {
+      cacheKeys.current = cacheKeys.current.filter((k) => k !== query);
+    } else if (cacheKeys.current.length >= MAX_CACHE_SIZE) {
+      const oldestKey = cacheKeys.current.shift();
+      if (oldestKey) {
+        delete similarityCache.current[oldestKey];
+      }
+    }
+
+    similarityCache.current[query] = results;
+    cacheKeys.current.push(query);
+  };
+
+  useEffect(() => {
     workerRef.current = new Worker(new URL("../worker.ts", import.meta.url), {
       type: "module",
     });
@@ -87,7 +79,7 @@ export function SemanticCombobox() {
 
       if (type === "modelLoaded") {
         if (workerRef.current) {
-          sendinitializeEmbeddingsMessage(workerRef.current, sentences);
+          sendinitializeEmbeddingsMessage(workerRef.current, SENTENCES);
         }
       } else if (type === "initialEmbeddingsComputed") {
         setLoading(false);
@@ -95,11 +87,11 @@ export function SemanticCombobox() {
         if ("data" in message && message.data && "results" in message.data) {
           const { results: similarityResults } = message.data;
           const resultSentences = similarityResults.map(
-            (r: SimilarityResult) => sentences[r.index]
+            (r: SimilarityResult) => SENTENCES[r.index]
           );
 
-          if (input) {
-            similarityCache.current[input] = resultSentences;
+          if ("query" in message.data && message.data.query) {
+            addToCache(message.data.query, resultSentences);
           }
 
           setResults(resultSentences);
@@ -124,8 +116,15 @@ export function SemanticCombobox() {
     return () => {
       workerRef.current?.terminate();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleOpenChange = (open: boolean) => {
+    setOpen(open);
+    if (!open) {
+      setResults(SENTENCES);
+      setInput("");
+    }
+  };
 
   const handleValueChange = (value: string) => {
     setInput(value);
@@ -140,8 +139,15 @@ export function SemanticCombobox() {
         computeSimilarity(value);
       }, debounceTime);
     } else {
-      setResults(sentences);
+      setResults(SENTENCES);
     }
+  };
+
+  const handleSelect = (selectedValue: string) => {
+    setValue(selectedValue === value ? "" : selectedValue);
+    setInput("");
+    setResults(SENTENCES);
+    setOpen(false);
   };
 
   const computeSimilarity = async (query: string) => {
@@ -156,16 +162,7 @@ export function SemanticCombobox() {
   };
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={(open) => {
-        setOpen(open);
-        if (!open) {
-          setResults(sentences);
-          setInput("");
-        }
-      }}
-    >
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -176,7 +173,7 @@ export function SemanticCombobox() {
           {loading
             ? "Loading..."
             : value
-            ? sentences.find((s) => s === value)
+            ? SENTENCES.find((s) => s === value)
             : "Select sentence..."}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -192,16 +189,7 @@ export function SemanticCombobox() {
             <CommandEmpty>No results.</CommandEmpty>
             <CommandGroup>
               {results.map((s) => (
-                <CommandItem
-                  key={s}
-                  value={s}
-                  onSelect={(currentValue) => {
-                    setValue(currentValue === value ? "" : currentValue);
-                    setInput("");
-                    setResults(sentences);
-                    setOpen(false);
-                  }}
-                >
+                <CommandItem key={s} value={s} onSelect={handleSelect}>
                   <Check
                     className={cn(
                       "mr-2 h-4 w-4",
