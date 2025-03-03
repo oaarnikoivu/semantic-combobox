@@ -19,6 +19,7 @@ Using embeddings from a pre-trained language model to provide semantic search ca
 
 ## Project structure
 
+- `src/pipeline.ts`: Transformers pipeline class using the singleton pattern for lazily creating a single instance of the pipeline
 - `src/components/semantic-combobox.tsx`: Main component with UI logic
 - `src/worker.ts`: Web Worker for handling similarity search
 - `src/hooks/use-semantic-search.ts`: Hook for handling semantic search
