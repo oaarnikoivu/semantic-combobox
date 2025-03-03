@@ -1,4 +1,4 @@
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -66,6 +66,7 @@ export function SemanticCombobox() {
           variant="outline"
           role="combobox"
           aria-expanded={open}
+          disabled={loading}
           className="w-[400px] justify-between"
         >
           {loading
@@ -73,7 +74,11 @@ export function SemanticCombobox() {
             : value
             ? SENTENCES.find((s) => s === value)
             : "Select sentence..."}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          {loading ? (
+            <Loader2 className="ml-2 h-4 w-4 shrink-0 opacity-50 animate-spin" />
+          ) : (
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          )}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[400px] p-0">

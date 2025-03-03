@@ -1,9 +1,6 @@
-import {
-  FeatureExtractionPipeline,
-  pipeline,
-  cos_sim,
-} from "@huggingface/transformers";
+import { FeatureExtractionPipeline, cos_sim } from "@huggingface/transformers";
 import { SimilarityResult, WorkerMessageType, WorkerMessage } from "./types";
+import { Pipeline } from "./pipeline";
 
 let model: FeatureExtractionPipeline;
 let sentenceEmbeddings: number[][];
@@ -49,15 +46,10 @@ async function initializeEmbeddings(sentences: string[]): Promise<number[][]> {
 
 async function initModel() {
   try {
-    model = await pipeline("feature-extraction", "Xenova/bert-base-uncased", {
-      device: "wasm",
-      dtype: "q8",
-      revision: "default",
-    });
-
+    model = await Pipeline.getInstance();
     sendModelLoaded();
   } catch (error) {
-    sendError("Failed to load model", error);
+    sendError("Failed to initialize model", error);
   }
 }
 
