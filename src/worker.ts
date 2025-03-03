@@ -97,7 +97,7 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
             sentenceEmbeddings
           );
           const topResults = similarities
-            .filter((item) => item.similarity >= 0.7)
+            .filter((item) => item.similarity >= 0.8)
             .sort((a, b) => b.similarity - a.similarity);
 
           sendSimilarityResults(topResults, query);

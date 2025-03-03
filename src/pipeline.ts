@@ -8,7 +8,7 @@ import { DataType } from "node_modules/@huggingface/transformers/types/utils/dty
 
 export class Pipeline {
   private static task: PipelineType = "feature-extraction";
-  private static model = "Xenova/bert-base-uncased";
+  private static model = "Xenova/distilbert-base-uncased";
   private static device: DeviceType = "wasm";
   private static dtype: DataType = "q8";
   private static revision = "default";
