@@ -8,11 +8,11 @@ import { DataType } from "node_modules/@huggingface/transformers/types/utils/dty
 
 export class Pipeline {
   private static task: PipelineType = "feature-extraction";
-  static model = "Xenova/bert-base-uncased";
-  static device: DeviceType = "wasm";
-  static dtype: DataType = "q8";
-  static revision = "default";
-  static instance: FeatureExtractionPipeline | null = null;
+  private static model = "Xenova/bert-base-uncased";
+  private static device: DeviceType = "wasm";
+  private static dtype: DataType = "q8";
+  private static revision = "default";
+  private static instance: FeatureExtractionPipeline | null = null;
 
   static async getInstance() {
     if (!this.instance) {
